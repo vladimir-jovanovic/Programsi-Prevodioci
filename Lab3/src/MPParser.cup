@@ -1,0 +1,215 @@
+
+import java_cup.runtime.*;
+import java.io.*;
+
+parser code {:
+   public static void main( String[] args )
+   {
+      try
+	  {
+		   FileReader file = new FileReader( args[0] );
+		   Scanner scanner = new MPLexer( file );
+		   MPParser parser = new MPParser( scanner );
+		   Symbol syntaxTree = parser.parse();
+           System.out.println(syntaxTree);
+	  }
+	  catch( Exception e )
+	  {
+		   e.printStackTrace();
+	  }
+   }
+:};
+
+
+terminal EXPERIMENT_BEGIN, EXPERIMENT_END, IF, REQUIREMENTS_BEGIN, REQUIREMENTS_END, NODES, EXECUTION_BEGIN, EXECUTION_END, NODE_BEGIN, NODE_END;
+terminal WP, ID, CONST, INT, DOUBLE, STRING, SEMICOLON, COLON, COMMA, LT, EQ, GT, PLUS, MULTIPLY, ASSIGN, NAME;
+terminal OPEN_ROUND_BRACKETS, CLOSE_ROUND_BRACKETS, OPEN_CURLY_BRACKETS, CLOSE_CURLY_BRACKETS, OPEN_SQUARE_BRACKETS, CLOSE_SQUARE_BRACKETS, OPEN_ANGLE_BRACKETS, CLOSE_ANGLE_BRACKETS;
+
+non terminal Experiment, Body, Declarations, Statements, Statement, Requirements, Execution, VariableDeclaration, Variable, Type;
+non terminal Assignment, IfStatement, RelExpression, Term, RelOp, Expression;
+non terminal NodeNumber, NodeList, NodeDef, NodeName, Route, Waypoints, Waypoint, X, Y, Z;
+
+precedence left PLUS;
+precedence left MULTIPLY;
+
+Experiment ::= EXPERIMENT_BEGIN Body EXPERIMENT_END
+{:
+    System.out.println("Experiment -> experiment Body ~experiment");
+    :};
+
+Body ::= Declarations Statements Requirements Execution
+{:
+    System.out.println("Body -> Declarations Statements Requirements Execution");
+    :};
+
+Declarations ::= VariableDeclaration
+{:
+    System.out.println("Declarations -> VariableDeclaration");
+    :};
+
+VariableDeclaration ::= VariableDeclaration SEMICOLON Variable
+{:
+    System.out.println("VariableDeclaration -> VariableDeclaration ; Variable");
+    :}
+    | Variable
+    {:
+        System.out.println("VariableDeclaration -> Variable");
+        :};
+
+Variable ::= Type ID SEMICOLON
+{:
+    System.out.println("Variable -> Type ID ;");
+    :};
+
+Type ::= INT 
+{:
+    System.out.println("Type -> int");
+    :}
+    | DOUBLE
+    {:
+        System.out.println("Type -> double");
+        :}
+    | STRING
+    {:
+        System.out.println("Type -> string");
+        :};
+
+Statements ::= Statements SEMICOLON Statement
+{:
+    System.out.println("Statements -> Statements ; Statement");
+    :}
+    | Statement
+    {:
+        System.out.println("Statements -> Statement");
+        :};
+
+Statement ::= Assignment
+{:
+    System.out.println("Statement -> Assignment");
+    :}
+    | IfStatement
+    {:
+        System.out.println("Statement -> Assignment");
+        :};
+
+IfStatement ::= IF OPEN_ROUND_BRACKETS RelExpression CLOSE_ROUND_BRACKETS COLON OPEN_CURLY_BRACKETS Statements CLOSE_CURLY_BRACKETS
+{:
+    System.out.println("IfStatement -> if \\(RelExpression\\) : {Statements}");
+    :};
+
+RelExpression ::= Term RelOp Term
+{:
+    System.out.println("RelExpression -> Term RelOp Term");
+    :}
+    | Term
+    {:
+        System.out.println("RelExpression -> Term");
+        :};
+
+Term ::= ID
+{:
+    System.out.println("Term -> ID");
+    :}
+    | CONST
+    {:
+        System.out.println("Term -> CONST");
+        :};
+
+RelOp ::= LT
+{:
+    System.out.println("RelOp -> lt");
+    :}
+    | EQ
+    {:
+        System.out.println("RelOp -> eq");
+        :}
+    | GT
+    {:
+        System.out.println("RelOp -> gt");
+    :};
+
+Assignment ::= ID ASSIGN Expression
+{:
+    System.out.println("Assignment -> ID = Expression");
+    :};
+
+Requirements ::= REQUIREMENTS_BEGIN NodeNumber REQUIREMENTS_END
+{:
+    System.out.println("Requirements -> requirements nodeNumber ~requirements");
+    :};
+
+NodeNumber ::= NODES CONST SEMICOLON
+{:
+    System.out.println("NodeNumber -> nodes CONST;");
+    :};
+
+Execution ::= EXECUTION_BEGIN NodeList EXECUTION_END
+{:
+    System.out.println("Execution -> execution NodeList ~execution");
+    :};
+
+NodeList ::= NodeList SEMICOLON NodeDef
+{:
+    System.out.println("NodeList -> NodeList ; NodeDef");
+    :}
+    | NodeDef
+    {:
+        System.out.println("NodeList -> NodeDef");
+        :};
+
+NodeDef ::= NODE_BEGIN NodeName COMMA Route NODE_END
+{:
+    System.out.println("NodeDef -> node NodeName, Route ~node");
+    :};
+
+NodeName ::= NAME ID
+{:
+    System.out.println("NodeName -> name ID");
+    :};
+
+Route ::= OPEN_SQUARE_BRACKETS Waypoints CLOSE_SQUARE_BRACKETS
+{:
+    System.out.println("Route -> [Waypoints]");
+    :};
+
+Waypoints ::= Waypoints SEMICOLON Waypoint
+{:
+    System.out.println("Waypoints -> Waypoints ; Waypoint");
+    :}
+    | Waypoint
+    {:
+        System.out.println("Waypoints -> Waypoint");
+        :};
+
+Waypoint ::= WP OPEN_ANGLE_BRACKETS X COMMA Y COMMA Z CLOSE_ANGLE_BRACKETS
+{:
+    System.out.println("Waypoint -> WP<X, Y, Z>");
+    :};
+
+X ::= Term
+{:
+    System.out.println("X -> Term");
+    :};
+
+Y ::= Term
+{:
+    System.out.println("Y -> Term");
+    :};
+
+Z ::= Term
+{:
+    System.out.println("Z -> Term");
+    :};
+
+Expression ::= Expression PLUS Term 
+{:
+    System.out.println("Expression -> Expression + Term");
+    :}
+    | Expression MULTIPLY Term
+    {:
+        System.out.println("Expression -> Expression * Term");
+        :}
+    | Term
+    {:
+        System.out.println("Expression -> Term");
+        :};

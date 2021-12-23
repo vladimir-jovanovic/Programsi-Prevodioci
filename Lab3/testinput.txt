@@ -1,0 +1,29 @@
+experiment
+    
+    -- komentar --
+
+    -- komentar u 
+    u vise linija --
+
+    int var1;;
+    double var2;;
+    string var3;
+
+    var1  = 10;
+    var2 = 0.524;
+    var4 = 223 + 55 * 44;
+    var3 = "tekst";
+    
+    if(var1 gt var2):
+        {var3 = "var1 je vec od var2"}
+
+    requirements
+        nodes 20;
+    ~requirements
+
+    execution 
+        node name node1,[ WP <x1, y1, z1>; WP <vl, tl, gl>] ~node;
+        node name node2,[ WP <x2, y2, z2> ] ~node
+    ~execution
+
+~experiment

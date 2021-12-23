@@ -1,0 +1,276 @@
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.ArrayList;
+
+parser code {:
+
+    public int errorCount = 0;
+
+    public ArrayList<String> syntaxErrorsList = new ArrayList<String>();
+
+    public static void main( String[] args )
+    {
+        try
+        {
+            FileReader file = new FileReader( args[0] );
+            Scanner scanner = new MPLexer( file );
+            MPParserWithErrors parser = new MPParserWithErrors( scanner );
+            parser.parse();
+
+            parser.printErrors();
+        }
+        catch( Exception e )
+        {
+            e.printStackTrace();
+        }
+
+   }
+
+   public void syntax_error(Symbol current_token){
+    
+   }
+
+   public void report_error(String message, Object info){
+
+   }
+
+   public int getLine(){
+       return ((MPLexer)getScanner()).getLine();
+   }
+   
+   public void printErrors(){
+       if(syntaxErrorsList.size() == 0) System.out.println("No errors.");
+       else{
+        System.out.println("\n\nNumber of syntax errors: " + syntaxErrorsList.size());
+        for(String error : syntaxErrorsList){
+            System.out.println(error);
+            }
+        }
+   }
+
+:};
+
+
+terminal EXPERIMENT_BEGIN, EXPERIMENT_END, IF, REQUIREMENTS_BEGIN, REQUIREMENTS_END, NODES, EXECUTION_BEGIN, EXECUTION_END, NODE_BEGIN, NODE_END;
+terminal WP, ID, CONST, INT, DOUBLE, STRING, SEMICOLON, COLON, COMMA, LT, EQ, GT, PLUS, MULTIPLY, ASSIGN, NAME;
+terminal OPEN_ROUND_BRACKETS, CLOSE_ROUND_BRACKETS, OPEN_CURLY_BRACKETS, CLOSE_CURLY_BRACKETS, OPEN_SQUARE_BRACKETS, CLOSE_SQUARE_BRACKETS, OPEN_ANGLE_BRACKETS, CLOSE_ANGLE_BRACKETS;
+
+non terminal Experiment, Body, Declarations, Statements, Statement, Requirements, Execution, VariableDeclaration, Variable, Type;
+non terminal Assignment, IfStatement, RelExpression, Term, RelOp, Expression;
+non terminal NodeNumber, NodeList, NodeDef, NodeName, Route, Waypoints, Waypoint, X, Y, Z;
+
+precedence left PLUS;
+precedence left MULTIPLY;
+
+Experiment ::= EXPERIMENT_BEGIN Body EXPERIMENT_END
+{:
+    System.out.println("Experiment -> experiment Body ~experiment");
+    :};
+
+Body ::= Declarations Statements Requirements Execution
+{:
+    System.out.println("Body -> Declarations Statements Requirements Execution");
+    :};
+
+Declarations ::= VariableDeclaration
+{:
+    System.out.println("Declarations -> VariableDeclaration");
+    :};
+
+VariableDeclaration ::= VariableDeclaration SEMICOLON Variable
+{:
+    System.out.println("VariableDeclaration -> VariableDeclaration ; Variable");
+    :}
+    | error Variable
+    {:
+        syntaxErrorsList.add("Missing semicolon in line number: " + parser.getLine());
+        :}
+    | Variable
+    {:
+        System.out.println("VariableDeclaration -> Variable");
+        :};
+
+Variable ::= Type ID SEMICOLON
+{:
+    System.out.println("Variable -> Type ID ;");
+    :}
+    | Type ID error
+    {:
+        syntaxErrorsList.add("Missing semicolon in line number: " + parser.getLine());
+        :};
+        
+
+Type ::= INT 
+{:
+    System.out.println("Type -> int");
+    :}
+    | DOUBLE
+    {:
+        System.out.println("Type -> double");
+        :}
+    | STRING
+    {:
+        System.out.println("Type -> string");
+        :};
+
+Statements ::= Statements SEMICOLON Statement
+{:
+    System.out.println("Statements -> Statements ; Statement");
+    :}
+    | Statement
+    {:
+        System.out.println("Statements -> Statement");
+        :}
+    | error Statement
+    {:
+        syntaxErrorsList.add("Missing semicolon in line number: " + parser.getLine());
+        :};
+
+Statement ::= Assignment
+{:
+    System.out.println("Statement -> Assignment");
+    :}
+    | IfStatement
+    {:
+        System.out.println("Statement -> Assignment");
+        :};
+
+IfStatement ::= IF OPEN_ROUND_BRACKETS RelExpression CLOSE_ROUND_BRACKETS COLON OPEN_CURLY_BRACKETS Statements CLOSE_CURLY_BRACKETS
+{:
+    System.out.println("IfStatement -> if \\(RelExpression\\) : {Statements}");
+    :}
+    | IF OPEN_ROUND_BRACKETS RelExpression CLOSE_ROUND_BRACKETS error
+    {:
+        syntaxErrorsList.add("Missing colon in line number: " + parser.getLine());
+        :};
+
+RelExpression ::= Term RelOp Term
+{:
+    System.out.println("RelExpression -> Term RelOp Term");
+    :}
+    | Term
+    {:
+        System.out.println("RelExpression -> Term");
+        :};
+
+Term ::= ID
+{:
+    System.out.println("Term -> ID");
+    :}
+    | CONST
+    {:
+        System.out.println("Term -> CONST");
+        :};
+
+RelOp ::= LT
+{:
+    System.out.println("RelOp -> lt");
+    :}
+    | EQ
+    {:
+        System.out.println("RelOp -> eq");
+        :}
+    | GT
+    {:
+        System.out.println("RelOp -> gt");
+    :};
+
+Assignment ::= ID ASSIGN Expression
+{:
+    System.out.println("Assignment -> ID = Expression");
+    :};
+
+Requirements ::= REQUIREMENTS_BEGIN NodeNumber REQUIREMENTS_END
+{:
+    System.out.println("Requirements -> requirements nodeNumber ~requirements");
+    :};
+
+NodeNumber ::= NODES CONST SEMICOLON
+{:
+    System.out.println("NodeNumber -> nodes CONST;");
+    :}
+    | NODES CONST error
+    {:
+        syntaxErrorsList.add("Missing semicolon in line number: " + parser.getLine());
+        :};
+
+Execution ::= EXECUTION_BEGIN NodeList EXECUTION_END
+{:
+    System.out.println("Execution -> execution NodeList ~execution");
+    :};
+
+NodeList ::= NodeList SEMICOLON NodeDef
+{:
+    System.out.println("NodeList -> NodeList ; NodeDef");
+    :}
+    | NodeDef
+    {:
+        System.out.println("NodeList -> NodeDef");
+        :}
+    | error NodeDef
+    {:
+        syntaxErrorsList.add("Missing semicolon in line number: " + parser.getLine());
+        :};
+
+NodeDef ::= NODE_BEGIN NodeName COMMA Route NODE_END
+{:
+    System.out.println("NodeDef -> node NodeName, Route ~node");
+    :};
+
+NodeName ::= NAME ID
+{:
+    System.out.println("NodeName -> name ID");
+    :};
+
+Route ::= OPEN_SQUARE_BRACKETS Waypoints CLOSE_SQUARE_BRACKETS
+{:
+    System.out.println("Route -> [Waypoints]");
+    :};
+
+Waypoints ::= Waypoints SEMICOLON Waypoint
+{:
+    System.out.println("Waypoints -> Waypoints ; Waypoint");
+    :}
+    | Waypoint
+    {:
+        System.out.println("Waypoints -> Waypoint");
+        :}
+    | error Waypoint
+    {:
+        syntaxErrorsList.add("Missing semicolon in line number: " + parser.getLine());
+        :};
+
+
+Waypoint ::= WP OPEN_ANGLE_BRACKETS X COMMA Y COMMA Z CLOSE_ANGLE_BRACKETS
+{:
+    System.out.println("Waypoint -> WP<X, Y, Z>");
+    :};
+
+X ::= Term
+{:
+    System.out.println("X -> Term");
+    :};
+
+Y ::= Term
+{:
+    System.out.println("Y -> Term");
+    :};
+
+Z ::= Term
+{:
+    System.out.println("Z -> Term");
+    :};
+
+Expression ::= Expression PLUS Term 
+{:
+    System.out.println("Expression -> Expression + Term");
+    :}
+    | Expression MULTIPLY Term
+    {:
+        System.out.println("Expression -> Expression * Term");
+        :}
+    | Term
+    {:
+        System.out.println("Expression -> Term");
+        :};

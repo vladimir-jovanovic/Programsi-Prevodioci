@@ -1,0 +1,8 @@
+
+count = 25;
+drugi = "neki string";
+
+if( 55 eq 55 ) :
+{
+    poruka = "55 je jednako 55!"
+}
