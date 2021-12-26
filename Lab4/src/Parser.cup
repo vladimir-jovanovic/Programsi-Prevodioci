@@ -1,0 +1,336 @@
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.ArrayList;
+
+import SymbolTable.*;
+
+parser code {:
+
+    SymbolTable symbolTable;
+
+    ArrayList<String> semanticErrors;
+    ArrayList<String> semanticWarnings;
+
+    int nodeDefCount;
+    int nodeDefLimit;
+
+    public static void main( String[] args )
+    {
+        try
+        {
+            FileReader file = new FileReader( args[0] );
+            Scanner scanner = new Lexer( file );
+            Parser parser = new Parser( scanner );
+
+            parser.parse();
+
+            parser.checkForWarnings();
+            parser.printSemanticWarnings();
+            parser.printSemanticErrors();
+        }
+        catch( Exception e )
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void checkForWarnings(){
+        SymbolNode current = symbolTable.getVariables();
+        while(current != null){
+            Variable var = (Variable)current;
+
+            if(var.last_def == -1 && var.last_use == -1){
+                semanticWarnings.add("warning: variable " + var.name + " is declared but it's never used");
+            }
+
+            current = current.next;
+        }
+    }
+
+    public void printSemanticErrors(){
+        for(String error : semanticErrors) System.out.println(error);
+    }
+
+    public void printSemanticWarnings(){
+        for(String warning : semanticWarnings) System.out.println(warning);
+    }
+
+    public int getLine()
+    {
+        return ((Lexer) getScanner()).getLine();
+    }
+:};
+
+init with {:
+	symbolTable = new SymbolTable();
+    semanticErrors = new ArrayList<String>();
+    semanticWarnings = new ArrayList<String>();
+:}
+
+terminal EXPERIMENT_BEGIN, EXPERIMENT_END, IF, REQUIREMENTS_BEGIN, REQUIREMENTS_END, NODES, EXECUTION_BEGIN, EXECUTION_END, NODE_BEGIN, NODE_END;
+terminal WP, INT, DOUBLE, STRING, SEMICOLON, COLON, COMMA, LT, EQ, GT, PLUS, MULTIPLY, ASSIGN, NAME;
+terminal OPEN_ROUND_BRACKETS, CLOSE_ROUND_BRACKETS, OPEN_CURLY_BRACKETS, CLOSE_CURLY_BRACKETS, OPEN_SQUARE_BRACKETS, CLOSE_SQUARE_BRACKETS, OPEN_ANGLE_BRACKETS, CLOSE_ANGLE_BRACKETS;
+terminal INTCONST, DCONST, STRCONST;
+terminal String ID;
+
+non terminal Experiment, Body, Declarations, Statements, Statement, Requirements, Execution, VariableDeclaration, Variable;
+non terminal Assignment, IfStatement, RelOp;
+non terminal NodeNumber, NodeList, NodeDef, NodeName, Route, Waypoints, Waypoint, X, Y, Z;
+non terminal Type Term, Type, Expression, RelExpression;
+non terminal Constant Const;
+
+precedence left PLUS;
+precedence left MULTIPLY;
+
+Experiment ::= EXPERIMENT_BEGIN Body EXPERIMENT_END
+{:
+    :};
+
+Body ::= Declarations Statements Requirements Execution
+{:
+    :};
+
+Declarations ::= VariableDeclaration
+{:
+    :};
+
+VariableDeclaration ::= VariableDeclaration SEMICOLON Variable
+{:
+    :}
+    | Variable
+    {:
+        :};
+
+Variable ::= Type:t ID:id SEMICOLON
+{:
+    if(!symbolTable.addVar(id, t)){
+        semanticErrors.add("error line " + parser.getLine() + ": " + id + " already declared!");
+        }
+    :};
+
+Type ::= INT 
+{:
+    RESULT = symbolTable.getType("integer");
+    :}
+    | DOUBLE
+    {:
+        RESULT = symbolTable.getType("double");
+        :}
+    | STRING
+    {:
+        RESULT = symbolTable.getType("string");
+        :};
+
+Statements ::= Statements SEMICOLON Statement
+{:
+    :}
+    | Statement
+    {:
+        :};
+
+Statement ::= Assignment
+{:
+    :}
+    | IfStatement
+    {:
+        :};
+
+IfStatement ::= IF OPEN_ROUND_BRACKETS RelExpression:e CLOSE_ROUND_BRACKETS COLON OPEN_CURLY_BRACKETS Statements CLOSE_CURLY_BRACKETS
+{:
+    :};
+
+RelExpression ::= Term:t1 RelOp Term:t2
+{:
+    if(t1.tkind != Type.INTEGER || t2.tkind != Type.INTEGER){
+        semanticErrors.add("error line " + parser.getLine() + ": rel expressions can contain only \'int\' types!");
+        RESULT = symbolTable.getType("unknown");
+    }
+    else{
+        RESULT = symbolTable.getType("integer");
+    }
+    :}
+    | Term
+    {:
+        RESULT = symbolTable.getType("integer");
+        :};
+
+Term ::= ID:id
+{:
+    Variable var = symbolTable.getVar(id);
+    if(var == null){
+        semanticErrors.add("error line " + parser.getLine() + ": " + id + " not declared!");
+        RESULT = symbolTable.getType("unknown");
+    }
+    else if(var.last_def == -1){
+        semanticErrors.add("error line " + parser.getLine() + ": " + id + " not initialized!");
+        RESULT = symbolTable.getType("unknown");
+    }
+    else{
+        RESULT = var.type;
+    }
+    var.last_use = parser.getLine();
+    :}
+    | Const:c
+    {:
+        RESULT = c.type;
+        :};
+
+RelOp ::= LT
+{:
+    :}
+    | EQ
+    {:
+        :}
+    | GT
+    {:
+    :};
+
+Assignment ::= ID:id ASSIGN Expression:e
+{:
+    Variable var = symbolTable.getVar(id);
+    if(var == null){
+        semanticErrors.add("error line " + parser.getLine() + ": " + id + " not declared!");
+    }
+    else{
+        if(var.type.tkind != e.tkind){
+            semanticErrors.add("error line " + parser.getLine() + ": assignment type mismatch!");
+        }
+        else{
+            var.last_def = parser.getLine();       
+        }
+    }
+    :};
+
+Requirements ::= REQUIREMENTS_BEGIN NodeNumber REQUIREMENTS_END
+{:
+    :};
+
+NodeNumber ::= NODES Const:c SEMICOLON
+{:
+    if(c.type.tkind != Type.INTEGER){
+        semanticErrors.add("line " + parser.getLine() + ": " + "number of node elements must be const of type \'int\'");
+    }
+    else{
+        nodeDefLimit = (int)c.value;
+        nodeDefCount = 0;
+    }
+    :};
+
+Execution ::= EXECUTION_BEGIN NodeList EXECUTION_END
+{:
+    :};
+
+NodeList ::= NodeList SEMICOLON NodeDef
+{:
+    if(nodeDefCount > nodeDefLimit){
+        semanticErrors.add("error line " + parser.getLine() + ": " + "number of node definitions must be less than or equal to " + nodeDefLimit + "!");
+    }
+    :}
+    | NodeDef
+    {:
+        :};
+
+NodeDef ::= NODE_BEGIN NodeName COMMA Route NODE_END
+{:
+    nodeDefCount++;
+    :};
+
+NodeName ::= NAME Term:t
+{:
+    if(t.tkind != Type.UNKNOWN && t.tkind != Type.STRING){
+        semanticErrors.add("error line " + parser.getLine() + ": " + "name of a node must be type \'string\'");
+    }
+    :};
+
+Route ::= OPEN_SQUARE_BRACKETS Waypoints CLOSE_SQUARE_BRACKETS
+{:
+    :};
+
+Waypoints ::= Waypoints SEMICOLON Waypoint
+{:
+    :}
+    | Waypoint
+    {:
+        :};
+
+Waypoint ::= WP OPEN_ANGLE_BRACKETS X COMMA Y COMMA Z CLOSE_ANGLE_BRACKETS
+{:
+    :};
+
+X ::= Term:t
+{:
+    if(t.tkind != Type.UNKNOWN && t.tkind != Type.INTEGER && t.tkind != Type.DOUBLE){
+        semanticErrors.add("error line " + parser.getLine() + ": " + "waypoint coordinate must be \'int\' or \'double\'");
+    }
+    :};
+
+Y ::= Term:t
+{:
+    if(t.tkind != Type.UNKNOWN && t.tkind != Type.INTEGER && t.tkind != Type.DOUBLE){
+        semanticErrors.add("error line " + parser.getLine() + ": " + "waypoint coordinate must be \'int\' or \'double\'");
+    }
+    :};
+
+Z ::= Term:t
+{:
+    if(t.tkind != Type.UNKNOWN && t.tkind != Type.INTEGER && t.tkind != Type.DOUBLE){
+        semanticErrors.add("error line " + parser.getLine() + ": " + "waypoint coordinate must be \'int\' or \'double\'");
+    }
+    :};
+
+Expression ::= Expression:e PLUS Term:t
+{:
+    if(e.tkind == Type.STRING || t.tkind == Type.STRING){
+        semanticErrors.add("error line " + parser.getLine() + ": " + "addition with type \'string\' is not allowed");
+        RESULT = symbolTable.getType("unknown");
+    }
+    else{
+            if(e.tkind == Type.DOUBLE && t.tkind == Type.DOUBLE){
+                RESULT = symbolTable.getType("double");
+            }
+            else if (e.tkind == Type.INTEGER && t.tkind == Type.INTEGER){
+                RESULT = symbolTable.getType("integer");
+            }
+            else{
+                semanticWarnings.add("warning line " + parser.getLine() + ": " + "implicit cast to double");
+                RESULT = symbolTable.getType("double");
+            }
+    }
+    :}
+    | Expression:e MULTIPLY Term:t
+    {:
+        if(e.tkind == Type.STRING || t.tkind == Type.STRING){
+            semanticErrors.add("error line " + parser.getLine() + ": " + "multiplication with type \'string\' is not allowed");
+            RESULT = symbolTable.getType("unknown");
+        }
+        {
+            if(e.tkind == Type.DOUBLE && t.tkind == Type.DOUBLE){
+                RESULT = symbolTable.getType("double");
+            }
+            else if (e.tkind == Type.INTEGER && t.tkind == Type.INTEGER){
+                RESULT = symbolTable.getType("integer");
+            }
+            else{
+                semanticWarnings.add("warning line " + parser.getLine() + ": " + "implicit cast to double!");
+                RESULT = symbolTable.getType("double");
+            }
+        }
+        :}
+    | Term:t
+    {:
+        RESULT = t;
+        :};
+
+Const ::= INTCONST:c
+{:
+   RESULT = new Constant(symbolTable.getType("integer"), c);
+    :}
+    | DCONST:c
+    {:
+       RESULT = new Constant(symbolTable.getType("double"), c);
+    :}
+    | STRCONST:c
+    {:
+       RESULT = new Constant(symbolTable.getType("string"), c);
+    :};
