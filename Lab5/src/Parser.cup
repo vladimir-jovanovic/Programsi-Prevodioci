@@ -1,0 +1,255 @@
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.ArrayList;
+
+import SymbolTable.*;
+import AST.*;
+
+parser code {:
+
+    SymbolTable symbolTable;
+
+    enum RelOp {
+        LT,
+        EQ,
+        GT
+    }
+
+    public static void main( String[] args )
+    {
+        try
+        {
+            FileReader file = new FileReader( args[0] );
+            Scanner scanner = new Lexer( file );
+            Parser parser = new Parser( scanner );
+            ASTNode ast = (ASTNode)parser.parse().value;
+
+            String outputFilename = args[0].substring(0, args[0].length() - 3) + "ic";
+
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilename));
+            ast.translate(writer);
+            writer.close();
+
+        }
+        catch( Exception e )
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public int getLine()
+    {
+        return ((Lexer) getScanner()).getLine();
+    }
+:};
+
+init with {:
+	symbolTable = new SymbolTable();
+:}
+
+terminal EXPERIMENT_BEGIN, EXPERIMENT_END, IF, ELSE, REQUIREMENTS_BEGIN, REQUIREMENTS_END, NODES, EXECUTION_BEGIN, EXECUTION_END, NODE_BEGIN, NODE_END;
+terminal WP, INT, DOUBLE, STRING, SEMICOLON, COLON, COMMA, LT, EQ, GT, PLUS, MULTIPLY, ASSIGN, NAME;
+terminal OPEN_ROUND_BRACKETS, CLOSE_ROUND_BRACKETS, OPEN_CURLY_BRACKETS, CLOSE_CURLY_BRACKETS, OPEN_SQUARE_BRACKETS, CLOSE_SQUARE_BRACKETS, OPEN_ANGLE_BRACKETS, CLOSE_ANGLE_BRACKETS;
+terminal INTCONST, DCONST, STRCONST;
+terminal String ID;
+
+non terminal Block Body, Statements;
+non terminal Statement Statement;
+non terminal Assignment Assignment;
+non terminal IfStatement IfStatement;
+non terminal Expression Expression, RelExpression, Term;
+non terminal VariableDeclaration, Variable;
+non terminal RelOp RelOp;
+non terminal Experiment, Declarations, Requirements, Execution, NodeDef, NodeNumber, NodeList, NodeName, Route, Waypoints, Waypoint, X, Y, Z;
+non terminal Type Type;
+non terminal Constant Const;
+
+precedence left PLUS;
+precedence left MULTIPLY;
+
+Experiment ::= EXPERIMENT_BEGIN Body:b EXPERIMENT_END
+{:
+    RESULT = b;
+    :};
+
+Body ::= Declarations Statements:ss Requirements Execution
+{:
+    RESULT = ss;
+    :};
+
+Declarations ::= VariableDeclaration
+{:
+    :};
+
+VariableDeclaration ::= VariableDeclaration SEMICOLON Variable
+{:
+    :}
+    | Variable
+    {:
+        :};
+
+Variable ::= Type:t ID:id SEMICOLON
+{:
+    symbolTable.addVar(id, t);
+    :};
+
+Type ::= INT 
+{:
+    RESULT = symbolTable.getType("integer");
+    :}
+    | DOUBLE
+    {:
+        RESULT = symbolTable.getType("double");
+        :}
+    | STRING
+    {:
+        RESULT = symbolTable.getType("string");
+        :};
+
+Statements ::= Statements:ss SEMICOLON Statement:s
+{:
+    RESULT = ss;
+    RESULT.addStatement(s);
+    :}
+    | Statement:s
+    {:
+        RESULT = new Block();
+        RESULT.addStatement(s);
+        :};
+
+Statement ::= Assignment:a
+{:
+    RESULT = a;
+    :}
+    | IfStatement:is
+    {:
+        RESULT = is;
+        :};
+
+IfStatement ::= IF OPEN_ROUND_BRACKETS RelExpression:e CLOSE_ROUND_BRACKETS COLON OPEN_CURLY_BRACKETS Statements:t CLOSE_CURLY_BRACKETS ELSE OPEN_CURLY_BRACKETS Statements:el CLOSE_CURLY_BRACKETS
+{:
+    RESULT = new IfStatement(e, t, el);
+    :};
+
+RelExpression ::= Term:t1 RelOp:o Term:t2
+{:
+    if(o == RelOp.LT)
+        RESULT = new Lt(t1, t2);
+    else if(o == RelOp.EQ)
+        RESULT = new Eq(t1, t2);
+    else if(o == RelOp.GT)
+        RESULT = new Gt(t1, t2);
+    :}
+    | Term:t
+    {:
+        RESULT = t;
+        :};
+
+Term ::= ID:id
+{:
+    Variable var = symbolTable.getVar(id);
+    RESULT = new VariableExpression(var);
+    :}
+    | Const:c
+    {:
+        RESULT = new ConstantExpression(c);
+        :};
+
+RelOp ::= LT
+{:
+    RESULT = RelOp.LT;
+    :}
+    | EQ
+    {:
+        RESULT = RelOp.EQ;
+    :}
+    | GT
+    {:
+        RESULT = RelOp.GT;
+    :};
+
+Assignment ::= ID:id ASSIGN Expression:e
+{:
+    Variable var = symbolTable.getVar(id);
+    RESULT = new Assignment(var, e);
+    :};
+
+Requirements ::= REQUIREMENTS_BEGIN NodeNumber REQUIREMENTS_END
+{:
+    :};
+
+NodeNumber ::= NODES Const:c SEMICOLON
+{:
+    :};
+
+Execution ::= EXECUTION_BEGIN NodeList EXECUTION_END
+{:
+    :};
+
+NodeList ::= NodeList SEMICOLON NodeDef
+{:
+    :}
+    | NodeDef
+    {:
+        :};
+
+NodeDef ::= NODE_BEGIN NodeName COMMA Route NODE_END
+{:
+    :};
+
+NodeName ::= NAME Term:t
+{:
+    :};
+
+Route ::= OPEN_SQUARE_BRACKETS Waypoints CLOSE_SQUARE_BRACKETS
+{:
+    :};
+
+Waypoints ::= Waypoints SEMICOLON Waypoint
+{:
+    :}
+    | Waypoint
+    {:
+        :};
+
+Waypoint ::= WP OPEN_ANGLE_BRACKETS X COMMA Y COMMA Z CLOSE_ANGLE_BRACKETS
+{:
+    :};
+
+X ::= Term:t
+{:
+    :};
+
+Y ::= Term:t
+{:
+    :};
+
+Z ::= Term:t
+{:
+    :};
+
+Expression ::= Expression:e PLUS Expression:t
+{:
+    RESULT = new Sum(e, t);
+    :}
+    | Expression:e MULTIPLY Expression:t
+    {:
+        RESULT = new Product(e, t);
+        :}
+    | Term:t
+    {:
+    RESULT = t;
+        :};
+
+Const ::= INTCONST:c
+{:
+   RESULT = new Constant(symbolTable.getType("integer"), c);
+    :}
+    | DCONST:c
+    {:
+       RESULT = new Constant(symbolTable.getType("double"), c);
+    :}
+    | STRCONST:c
+    {:
+       RESULT = new Constant(symbolTable.getType("string"), c);
+    :};

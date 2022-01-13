@@ -1,0 +1,62 @@
+experiment
+    -- komentar --
+
+    -- komentar u 
+    u vise linija --
+
+    int var1;;
+    double var2;;
+    string var3;;
+    int var4;;
+    string node1;;
+    string node2;;
+    int x1;;
+    double ddd2;;
+
+    int x1;;int y1;;int z1;;
+    int vl;;int tl;;int gl;;
+    int x2;;int y2;;int z2;
+
+    var1  = 10;
+    var2 = 0.524 + 10;
+    var4 = 4 + 5 * 2;
+    var3 = "tekst";
+
+    x1 = 1;
+    x2 = 2;
+    y1 = x1;
+    y2 = x2;
+    z1 = 55;
+    z2 = z1;
+
+    node1 = "imenoda1";
+    node2 = "imenoda2";
+    
+    if(44 gt 5):
+    {
+        var3 = "var1 je vec od var2";
+         vl = 5;
+         ddd2 = 2.5;
+         if(x1 lt x2):{
+            var3 = "neki drugi tekst"
+         }
+         else{
+            var3 = "neki treci tekst"
+         }
+
+    }
+    else
+    {
+        var2="nebitno"
+    }
+
+    requirements
+        nodes 2;
+    ~requirements
+
+    execution 
+        node name 55,[ WP <x1, y1, z1>; WP <vl, tl, gl>] ~node;
+        node name node2,[ WP <x2, y2, z2> ] ~node
+    ~execution
+
+~experiment

@@ -1,0 +1,66 @@
+	Load_Const	R1, 10
+	Store		R1, var1
+	Load_Const	R1, 0.524
+	Load_Const	R2, 10
+	Add		R1, R2
+	Store		R1, $tmp0
+	Load_Mem	R1, $tmp0
+	Store		R1, var2
+	Load_Const	R1, 5
+	Load_Const	R2, 2
+	Mul		R1, R2
+	Store		R1, $tmp1
+	Load_Const	R1, 4
+	Load_Mem	R2, $tmp1
+	Add		R1, R2
+	Store		R1, $tmp2
+	Load_Mem	R1, $tmp2
+	Store		R1, var4
+	Load_Const	R1, "tekst"
+	Store		R1, var3
+	Load_Const	R1, 1
+	Store		R1, x1
+	Load_Const	R1, 2
+	Store		R1, x2
+	Load_Mem	R1, x1
+	Store		R1, y1
+	Load_Mem	R1, x2
+	Store		R1, y2
+	Load_Const	R1, 55
+	Store		R1, z1
+	Load_Mem	R1, z1
+	Store		R1, z2
+	Load_Const	R1, "imenoda1"
+	Store		R1, node1
+	Load_Const	R1, "imenoda2"
+	Store		R1, node2
+	Load_Const	R1, 44
+	Load_Const	R2, 5
+	Compare_Greater		R1, R2
+	Store		R1, $tmp3
+	Load_Mem	R1, $tmp3
+	JumpIfZero	R1, lab0
+	Load_Const	R1, "var1 je vec od var2"
+	Store		R1, var3
+	Load_Const	R1, 5
+	Store		R1, vl
+	Load_Const	R1, 2.5
+	Store		R1, ddd2
+	Load_Mem	R1, x1
+	Load_Mem	R2, x2
+	Compare_Less		R1, R2
+	Store		R1, $tmp4
+	Load_Mem	R1, $tmp4
+	JumpIfZero	R1, lab2
+	Load_Const	R1, "neki drugi tekst"
+	Store		R1, var3
+	Jump	lab3
+lab2:
+	Load_Const	R1, "neki treci tekst"
+	Store		R1, var3
+lab3:
+	Jump	lab1
+lab0:
+	Load_Const	R1, "nebitno"
+	Store		R1, var2
+lab1:
